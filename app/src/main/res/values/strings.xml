@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">mirror</string>
+    <string name="mirror_connect">connect</string>
+</resources>
