@@ -1,0 +1,3 @@
+[submodule "manager/local_packages/nsd"]
+	path = manager/local_packages/nsd
+	url = git@github.com:yearsyan/nsd.git
