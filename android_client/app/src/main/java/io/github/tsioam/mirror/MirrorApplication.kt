@@ -13,7 +13,6 @@ class MirrorApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        Discovery.initialize(this)
         val flutterEngine = FlutterEngine(this)
         flutterEngine.dartExecutor.executeDartEntrypoint(
             DartExecutor.DartEntrypoint.createDefault()

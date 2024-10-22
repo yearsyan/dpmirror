@@ -2,16 +2,24 @@ package io.github.tsioam.mirror
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.net.nsd.NsdServiceInfo
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.NonNull
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.lifecycleScope
 import io.flutter.embedding.android.FlutterFragment
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.InetAddress
 
 
 private const val TAG_FLUTTER_FRAGMENT = "flutter_fragment"
+private const val FLUTTER_CHANNEL_NAME = "io.github.tsioam.mirror"
 class MainActivity : FragmentActivity() {
 
     private var flutterFragment: FlutterFragment? = null
@@ -33,6 +41,37 @@ class MainActivity : FragmentActivity() {
                     TAG_FLUTTER_FRAGMENT
                 )
                 .commit()
+        }
+        configMethodChannel()
+    }
+
+    private fun configMethodChannel() {
+        val flutterEngine = FlutterEngineCache
+            .getInstance()
+            .get(MirrorApplication.FLUTTER_ENGINE_TAG)
+        MethodChannel(flutterEngine!!.dartExecutor.binaryMessenger, FLUTTER_CHANNEL_NAME).setMethodCallHandler{ call, result ->
+            when(call.method) {
+                "startScreenMirror" -> {
+                    val arguments: Map<String, Any> = call.arguments() ?: return@setMethodCallHandler
+                    handleMirrorCall(arguments)
+                }
+            }
+        }
+    }
+
+    private fun handleMirrorCall(arguments: Map<String, Any>) {
+        val host = arguments["host"]
+        val port = arguments["port"]
+        if (host is String && port is Int) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val inetAddress: InetAddress = InetAddress.getByName(host)
+                val ipAddress = inetAddress.hostAddress
+                if (ipAddress != null) {
+                    withContext(Dispatchers.Main) {
+                        openMirrorPage(ipAddress, port)
+                    }
+                }
+            }
         }
     }
 
@@ -86,50 +125,10 @@ class MainActivity : FragmentActivity() {
         flutterFragment!!.onTrimMemory(level)
     }
 
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        enableEdgeToEdge()
-//        setContent {
-//            val dataList = remember { mutableStateListOf(*Discovery.getInstance().getServices().toTypedArray()) }
-//            DisposableEffect(Unit) {
-//                val listener: (services: Map<String, NsdServiceInfo>) -> Unit =  {
-//                    dataList.clear()
-//                    dataList.addAll(it.values)
-//                }
-//
-//                Discovery.getInstance().registerServiceChangeListener(listener)
-//                onDispose {
-//                    Discovery.getInstance().unregisterServiceChangeListener(listener)
-//                }
-//            }
-//
-//            MirrorTheme {
-//                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-//                    Column (
-//                        modifier = Modifier.padding(innerPadding).fillMaxWidth(1.0f),
-//                        horizontalAlignment = Alignment.CenterHorizontally
-//                    ) {
-//                        LazyColumn(modifier = Modifier.fillMaxSize(1.0f)) {
-//                            items(dataList) { item ->
-//                                RemoteItemCard(
-//                                    item = item,
-//                                    onConnect = {
-//                                        openMirrorPage(item)
-//                                    }
-//                                )
-//                            }
-//                        }
-//                    }
-//
-//                }
-//            }
-//        }
-//    }
-
-    private fun openMirrorPage(serviceInfo: NsdServiceInfo) {
+    private fun openMirrorPage(host: String, port: Int) {
         val intent = Intent(this, SurfaceActivity::class.java)
-        intent.putExtra(INTENT_KEY_ADDRESS, serviceInfo.host.hostAddress)
-        intent.putExtra(INTENT_KEY_PORT, serviceInfo.port)
+        intent.putExtra(INTENT_KEY_ADDRESS, host)
+        intent.putExtra(INTENT_KEY_PORT, port)
         startActivity(intent)
     }
 }
