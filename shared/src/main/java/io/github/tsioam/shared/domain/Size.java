@@ -2,9 +2,10 @@ package io.github.tsioam.shared.domain;
 
 import android.graphics.Rect;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public final class Size {
+public final class Size implements Serializable {
     private final int width;
     private final int height;
 
@@ -39,6 +40,10 @@ public final class Size {
         }
         Size size = (Size) o;
         return width == size.width && height == size.height;
+    }
+
+    public int getMax() {
+        return Math.max(width, height);
     }
 
     @Override

@@ -1,14 +1,17 @@
 package io.github.tsioam.mirror.server.wrappers;
 
+import io.github.tsioam.mirror.server.FakeContext;
 import io.github.tsioam.mirror.server.util.Command;
 import io.github.tsioam.mirror.server.device.DisplayInfo;
 import io.github.tsioam.mirror.server.util.Ln;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.hardware.display.VirtualDisplay;
 import android.view.Display;
 import android.view.Surface;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.regex.Matcher;
@@ -50,9 +53,10 @@ public final class DisplayManager {
         int width = Integer.parseInt(m.group(2));
         int height = Integer.parseInt(m.group(3));
         int rotation = Integer.parseInt(m.group(4));
-        int layerStack = Integer.parseInt(m.group(5));
+        int density = Integer.parseInt(m.group(5));
+        int layerStack = Integer.parseInt(m.group(6));
 
-        return new DisplayInfo(displayId, new Size(width, height), rotation, layerStack, flags);
+        return new DisplayInfo(displayId, new Size(width, height), rotation, layerStack, flags, density);
     }
 
     private static DisplayInfo getDisplayInfoFromDumpsysDisplay(int displayId) {
@@ -99,7 +103,8 @@ public final class DisplayManager {
             int rotation = cls.getDeclaredField("rotation").getInt(displayInfo);
             int layerStack = cls.getDeclaredField("layerStack").getInt(displayInfo);
             int flags = cls.getDeclaredField("flags").getInt(displayInfo);
-            return new DisplayInfo(displayId, new Size(width, height), rotation, layerStack, flags);
+            int dpi = cls.getDeclaredField("logicalDensityDpi").getInt(displayInfo);
+            return new DisplayInfo(displayId, new Size(width, height), rotation, layerStack, flags, dpi);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
@@ -124,5 +129,12 @@ public final class DisplayManager {
     public VirtualDisplay createVirtualDisplay(String name, int width, int height, int displayIdToMirror, Surface surface) throws Exception {
         Method method = getCreateVirtualDisplayMethod();
         return (VirtualDisplay) method.invoke(null, name, width, height, displayIdToMirror, surface);
+    }
+
+    public VirtualDisplay createNewVirtualDisplay(String name, int width, int height, int dpi, Surface surface, int flags) throws Exception {
+        Constructor<android.hardware.display.DisplayManager> ctor = android.hardware.display.DisplayManager.class.getDeclaredConstructor(Context.class);
+        ctor.setAccessible(true);
+        android.hardware.display.DisplayManager dm = ctor.newInstance(FakeContext.get());
+        return dm.createVirtualDisplay(name, width, height, dpi, surface, flags);
     }
 }

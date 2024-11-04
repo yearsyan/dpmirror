@@ -6,6 +6,7 @@ import android.view.Surface;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.github.tsioam.mirror.server.device.ConfigurationException;
 import io.github.tsioam.shared.domain.Size;
 
 /**
@@ -41,6 +42,13 @@ public abstract class SurfaceCapture {
      * Called after the capture ends (if and only if {@link #init()} has been called).
      */
     public abstract void release();
+
+    /**
+     * Called once before each capture starts, before {@link #getSize()}.
+     */
+    public void prepare() throws ConfigurationException {
+        // empty by default
+    }
 
     /**
      * Start the capture to the target surface.

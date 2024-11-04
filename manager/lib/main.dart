@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:manager/pages/device.dart';
 import 'package:manager/pages/home.dart';
 
 void main() => runApp(const MyApp());
@@ -8,11 +9,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter',
+      title: 'Mir',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Service'),
+      routes: {
+        '/': (context) => const HomePage(),
+        '/device': (context) => const DevicePage(),
+      },
     );
   }
 }

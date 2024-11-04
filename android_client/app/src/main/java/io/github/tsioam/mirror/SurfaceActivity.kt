@@ -8,6 +8,8 @@ import androidx.activity.enableEdgeToEdge
 
 const val INTENT_KEY_ADDRESS = "address"
 const val INTENT_KEY_PORT = "port"
+const val INTENT_KEY_PACKAGE_NAME = "package"
+const val INTENT_KEY_DISPLAY = "display"
 class SurfaceActivity : ComponentActivity() {
     private lateinit var mirrorContent: MirrorContent
 
@@ -15,6 +17,7 @@ class SurfaceActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val address = intent.getStringExtra(INTENT_KEY_ADDRESS)
         val port = intent.getIntExtra(INTENT_KEY_PORT, -1)
+        val packageName = intent.getStringExtra(INTENT_KEY_PACKAGE_NAME)
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode =
@@ -24,7 +27,7 @@ class SurfaceActivity : ComponentActivity() {
             setErrorView()
             return
         }
-        mirrorContent = MirrorContent(address, port)
+        mirrorContent = MirrorContent(address, port, packageName)
         setContentView(mirrorContent.createView(this))
     }
 

@@ -3,6 +3,7 @@ package io.github.tsioam.mirror
 import android.annotation.SuppressLint
 import android.media.MediaCodec
 import android.media.MediaFormat
+import android.os.Build
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Surface
@@ -11,19 +12,26 @@ import android.view.SurfaceView
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import io.github.tsioam.mirror.util.Rpc
 import io.github.tsioam.mirror.util.await
 import io.github.tsioam.mirror.video.VideoStreamReader
 import io.github.tsioam.shared.domain.ControlMessage
+import io.github.tsioam.shared.domain.NewDisplay
 import io.github.tsioam.shared.util.Binary
 import io.github.tsioam.shared.video.VideoCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.internal.http.HttpMethod
+import org.json.JSONObject
 import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
@@ -37,7 +45,8 @@ import kotlin.coroutines.suspendCoroutine
 private const val TAG = "SurfaceContent"
 class MirrorContent(
     private val address: String,
-    private val port: Int
+    private val port: Int,
+    private val packageName: String?
 ) {
     private lateinit var activity: ComponentActivity
     private lateinit var surfaceView: SurfaceView
@@ -53,10 +62,9 @@ class MirrorContent(
     private var videoMirrorRunning: Boolean = false
 
 
-    public fun createView(activity: ComponentActivity): ViewGroup {
+    fun createView(activity: ComponentActivity): ViewGroup {
         this.activity = activity
         activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
 
         val parent = activity.window.decorView as ViewGroup
         val view = LayoutInflater.from(activity).inflate(R.layout.surface_container, parent, false) as ViewGroup
@@ -89,6 +97,14 @@ class MirrorContent(
         return view
     }
 
+    private fun getDisplay(): NewDisplay? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            activity.intent.getSerializableExtra(INTENT_KEY_DISPLAY, NewDisplay::class.java)
+        } else {
+            activity.intent.getSerializableExtra(INTENT_KEY_DISPLAY) as NewDisplay
+        }
+    }
+
     public fun onHide() {
         showing = false
     }
@@ -107,15 +123,21 @@ class MirrorContent(
     }
 
     private suspend fun sendConnectRequest() {
-        val client = OkHttpClient()
-        val request = Request.Builder()
-            .url("http://${address}:${port}")
-            .build()
-
-        val response = client.newCall(request).await()
-        if (response.isSuccessful) {
-            Log.e(TAG, "request http success")
+        val jo = JSONObject()
+        try {
+            if (packageName?.isNotEmpty() == true) {
+                jo.put("package_name", packageName)
+                jo.put("is_app_mirror", true)
+                jo.put("display", getDisplay()?.toJSON())
+            }
+            Rpc.call(address, port, "screen-connect", jo.toString())
+        } catch (e: Exception) {
+            Toast.makeText(activity, "error",Toast.LENGTH_LONG).show()
+            e.printStackTrace()
+            // TODO
         }
+
+        Log.e(TAG, "request http success")
     }
 
     private suspend fun startMirror() = coroutineScope {

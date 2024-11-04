@@ -3,15 +3,41 @@ import 'package:nsd/nsd.dart';
 
 import '../core/mirror_method_channel.dart';
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+void showMyDialog(BuildContext context, String content) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text("Apps"),
+        content: Text(content),
+        actions: <Widget>[
+          TextButton(
+            child: Text("取消"),
+            onPressed: () {
+              Navigator.of(context).pop(); // 关闭对话框
+            },
+          ),
+          TextButton(
+            child: Text("确认"),
+            onPressed: () {
+              // 执行确认操作
+              Navigator.of(context).pop(); // 关闭对话框
+            },
+          ),
+        ],
+      );
+    },
+  );
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
   final Set<Service> _services = {};
   Discovery? _discovery;
 
@@ -81,14 +107,23 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (service.host != null && service.port != null) ElevatedButton(
+                          children: service.host != null && service.port != null ? [
+                            ElevatedButton(
                               onPressed: () {
                                 MethodChannelSingleton().startScreenMirror(service.host!, service.port!, false);
                               },
                               child: const Text("connect"),
                             ),
-                          ],
+                            SizedBox(width: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                final device = DeviceInfo( host: service.host!, port: service.port! );
+                                Navigator.pushNamed(context, "/device", arguments: device);
+                                //final body = await MethodChannelSingleton().callRpc(service.host!, service.port!, "listApp", "{}");
+                              },
+                              child: const Text("App"),
+                            )
+                          ] : [],
                         ),
                       ],
                     )
