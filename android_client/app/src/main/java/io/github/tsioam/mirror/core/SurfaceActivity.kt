@@ -1,16 +1,17 @@
-package io.github.tsioam.mirror
+package io.github.tsioam.mirror.core
 
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 
 const val INTENT_KEY_ADDRESS = "address"
 const val INTENT_KEY_PORT = "port"
 const val INTENT_KEY_PACKAGE_NAME = "package"
 const val INTENT_KEY_DISPLAY = "display"
-class SurfaceActivity : ComponentActivity() {
+class SurfaceActivity : AppCompatActivity() {
     private lateinit var mirrorContent: MirrorContent
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,8 +28,10 @@ class SurfaceActivity : ComponentActivity() {
             setErrorView()
             return
         }
+
         mirrorContent = MirrorContent(address, port, packageName)
         setContentView(mirrorContent.createView(this))
+        mirrorContent.onCreated()
     }
 
     private fun setErrorView() {
@@ -48,6 +51,10 @@ class SurfaceActivity : ComponentActivity() {
     override fun onDestroy() {
         mirrorContent.onDestroy()
         super.onDestroy()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return mirrorContent.onKeyDown(keyCode, event)
     }
 
 }

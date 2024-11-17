@@ -18,7 +18,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Mirror"
         android:name=".MirrorApplication"
-        tools:targetApi="31">
+        tools:targetApi="34">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,7 +33,7 @@
         <activity
             android:exported="true"
             android:theme="@style/FullScreenTheme"
-            android:name=".SurfaceActivity"/>
+            android:name=".core.SurfaceActivity"/>
     </application>
 
 </manifest>

@@ -8,6 +8,7 @@ import java.io.IOException;
 
 import io.github.tsioam.mirror.server.ServerThread;
 import io.github.tsioam.mirror.server.device.ConfigurationException;
+import io.github.tsioam.mirror.server.wrappers.ServiceManager;
 import io.github.tsioam.shared.domain.NewDisplay;
 
 @RPCService(name = "screen-connect")
@@ -28,7 +29,17 @@ public class ScreenConnectMethod implements IRPCMethod {
             return "SUCCESS";
         }
 
-        final ServerThread.Session connectionSession = ServerThread.Session.createAndConnect(context.getRemoteAddress(), 8899);
+        int displayId = 0;
+
+        if (data.optInt("display_id") > 0) {
+            displayId = data.optInt("display_id");
+        } else {
+            int[] ids = ServiceManager.getDisplayManager().getDisplayIds();
+            if (ids.length > 0) {
+                displayId = ids[0];
+            }
+        }
+        final ServerThread.Session connectionSession = ServerThread.Session.createAndConnect(context.getRemoteAddress(), 8899, displayId);
         context.getServer().getSessionSet().put(connectionSession, true);
         connectionSession.setCloseListener(() -> context.getServer().getSessionSet().remove(connectionSession));
         return "SUCCESS";

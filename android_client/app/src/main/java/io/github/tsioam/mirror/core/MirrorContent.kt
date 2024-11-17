@@ -1,10 +1,13 @@
-package io.github.tsioam.mirror
+package io.github.tsioam.mirror.core
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.graphics.SurfaceTexture
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.Surface
 import android.view.SurfaceHolder
@@ -13,24 +16,19 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import io.github.tsioam.mirror.R
+import io.github.tsioam.mirror.core.video.VideoStreamReader
+import io.github.tsioam.mirror.ui.FloatView
+import io.github.tsioam.mirror.ui.FloatingWindowFragment
 import io.github.tsioam.mirror.util.Rpc
-import io.github.tsioam.mirror.util.await
-import io.github.tsioam.mirror.video.VideoStreamReader
-import io.github.tsioam.shared.domain.ControlMessage
 import io.github.tsioam.shared.domain.NewDisplay
-import io.github.tsioam.shared.util.Binary
 import io.github.tsioam.shared.video.VideoCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.internal.http.HttpMethod
 import org.json.JSONObject
 import java.io.Closeable
 import java.io.IOException
@@ -48,8 +46,9 @@ class MirrorContent(
     private val port: Int,
     private val packageName: String?
 ) {
-    private lateinit var activity: ComponentActivity
+    private lateinit var activity: AppCompatActivity
     private lateinit var surfaceView: SurfaceView
+    private lateinit var floatView: FloatView
     private val connectionSet: MutableSet<Closeable> = HashSet()
     private var mediaCodec: MediaCodec? = null
     private var serverSocket: ServerSocket? = null
@@ -60,9 +59,16 @@ class MirrorContent(
     private var hasInitialized: Boolean = false
     private var videoFormat: MediaFormat? = null
     private var videoMirrorRunning: Boolean = false
+    private var videoStreamer: VideoStreamReader? = null
+    private var audioPlayer: AudioPlayer? = null
+    private var controlChannel: ControlChannel? = null
+    private var emptySurfaceTexture: SurfaceTexture = SurfaceTexture(0)
+    private var emptySurface: Surface = Surface(emptySurfaceTexture)
 
+    val attachActivity: Activity get() = activity
+    val control: ControlChannel? get() = controlChannel
 
-    fun createView(activity: ComponentActivity): ViewGroup {
+    fun createView(activity: AppCompatActivity): ViewGroup {
         this.activity = activity
         activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -75,6 +81,10 @@ class MirrorContent(
                 if (!hasInitialized && showing) {
                     activity.lifecycleScope.launch {
                         startMirror()
+                    }
+                } else {
+                    activity.lifecycleScope.launch {
+                        restartMirror()
                     }
                 }
             }
@@ -89,12 +99,22 @@ class MirrorContent(
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
-                stopMirror()
+                pauseMirror()
             }
 
         })
 
+        floatView = FloatView(activity)
+        floatView.needReLayoutOnMove()
+        view.addView(floatView)
+
         return view
+    }
+
+    fun onCreated() {
+        activity.supportFragmentManager.beginTransaction()
+            .replace(floatView.id, FloatingWindowFragment(floatView, this))
+            .commit()
     }
 
     private fun getDisplay(): NewDisplay? {
@@ -137,7 +157,6 @@ class MirrorContent(
             // TODO
         }
 
-        Log.e(TAG, "request http success")
     }
 
     private suspend fun startMirror() = coroutineScope {
@@ -167,9 +186,9 @@ class MirrorContent(
                         Log.e(TAG, "connect type$connectType")
                         if (connectType == 0 && currentSurface != null) {
                             handleVideoStream(currentSurface!!, inputStream, outputStream)
+                        } else if (connectType == 1) {
+                            handleAudioStream(inputStream)
                         } else if (connectType == 2) {
-                            // control
-                            Log.e(TAG, "connect type control")
                             setSurfaceEventHandler(inputStream, outputStream)
                         }
                     }
@@ -184,33 +203,20 @@ class MirrorContent(
         }
     }
 
+    private fun handleAudioStream(inputStream: InputStream) {
+        Log.d(TAG, "hadnle audio")
+        audioPlayer = AudioPlayer(inputStream)
+        activity.lifecycleScope.launch {
+            audioPlayer?.start()
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun setSurfaceEventHandler(inputStream: InputStream, outputStream: OutputStream) {
+        controlChannel = ControlChannel(outputStream, activity.lifecycleScope)
         surfaceView.setOnTouchListener { _, event ->
-            Log.d(TAG, "event: ${event}")
-            for(pointerIdx in 0 until  event.pointerCount) {
-                val data = ByteBuffer.allocate(32)
-                data.put(ControlMessage.TYPE_INJECT_TOUCH_EVENT.toByte())
-                data.put(event.action.toByte())
-                data.putLong(event.getPointerId(pointerIdx).toLong())
-                val x = event.getX(pointerIdx).toInt()
-                val y = event.getY(pointerIdx).toInt()
-                val width = surfaceView.width
-                val height = surfaceView.height
-                data.putInt(x)
-                data.putInt(y)
-                data.putShort(width.toShort())
-                data.putShort(height.toShort())
-                data.putShort(Binary.floatToU16FixedPoint(event.getPressure(pointerIdx)))
-                val actionButton = 0
-                val buttons = 0
-                data.putInt(actionButton)
-                data.putInt(buttons)
-                data.flip()
-                val dataArr = data.array()
-                activity.lifecycleScope.launch(Dispatchers.IO) {
-                    outputStream.write(dataArr)
-                }
+            activity.lifecycleScope.launch {
+                controlChannel?.sendTouchEvent(event, surfaceView.width, surfaceView.height)
             }
             true
         }
@@ -220,42 +226,42 @@ class MirrorContent(
         val codec = VideoCodec.findById(codecId)
         val mimeType = codec?.mimeType ?: "video/avc"
         Log.d(TAG, "codec mine type: ${mimeType} av1: ${VideoCodec.AV1.mimeType}")
-        if (mediaCodec == null) {
-            mediaCodec = MediaCodec.createDecoderByType(mimeType)
-            val format = MediaFormat.createVideoFormat(mimeType, width, height)
-            videoFormat = format
-            mediaCodec!!.configure(format, surface, null, 0)
-        } else {
-            mediaCodec!!.configure(videoFormat, surface, null, 0)
-        }
+        mediaCodec = MediaCodec.createDecoderByType(mimeType)
+        val format = MediaFormat.createVideoFormat(mimeType, width, height)
+        videoFormat = format
+        mediaCodec!!.configure(format, surface, null, 0)
     }
 
     private suspend fun handleVideoStream(surface: Surface, inputStream: InputStream, outputStream: OutputStream) {
-        val header = ByteArray(12)
-        Log.e(TAG, "will reading header")
-        withContext(Dispatchers.IO) {
-            inputStream.read(header)
-        }
-        val buf = ByteBuffer.wrap(header)
-        val codecId = buf.getInt(0)
-        val width = buf.getInt(4)
-        val height = buf.getInt(8)
-        Log.i(TAG, "w:${width} h:${height}")
-        // h / w = height / width
-        withContext(Dispatchers.Main) {
-            Log.i(TAG, "resize surface")
-            resizeContent(surfaceView.width, surfaceView.width * height / width)
-            Log.i(TAG, "resize surface done")
+        if (mediaCodec == null) {
+            Log.e(TAG, "will reading header")
+            val header = ByteArray(12)
+            withContext(Dispatchers.IO) {
+                inputStream.read(header)
+            }
+            val buf = ByteBuffer.wrap(header)
+            val codecId = buf.getInt(0)
+            val width = buf.getInt(4)
+            val height = buf.getInt(8)
+            Log.i(TAG, "w:${width} h:${height}")
+            // h / w = height / width
+            withContext(Dispatchers.Main) {
+                Log.i(TAG, "resize surface")
+                resizeContent(surfaceView.width, surfaceView.width * height / width)
+                Log.i(TAG, "resize surface done")
+            }
+            setupMediaCode(codecId, surface, width, height)
+        } else {
+            mediaCodec!!.configure(videoFormat, surface, null, 0)
         }
 
-
-        Log.i(TAG, "create codec")
-        setupMediaCode(codecId, surface, width, height)
         mediaCodec!!.start()
-        writerThread = VideoStreamReader(
+        videoStreamer = VideoStreamReader(
             stream = inputStream,
+            outStream = outputStream,
             onNewFrameListener = { pts, config, keyFrame, data, offset, size ->
                 if (mediaCodec == null || writerThread?.isInterrupted == true) {
+                    Log.e(TAG, "error receive data when exit")
                     videoMirrorRunning = false
                     return@VideoStreamReader
                 }
@@ -274,7 +280,8 @@ class MirrorContent(
                     mediaCodec!!.queueInputBuffer(inputBufferIndex, 0, size, pts, flag)
                 }
             }
-        ).start()
+        )
+        writerThread = videoStreamer!!.start()
         decoderThread = Thread({
             val bufferInfo = MediaCodec.BufferInfo()
             while (!Thread.currentThread().isInterrupted) {
@@ -288,6 +295,7 @@ class MirrorContent(
                         break
                     }
                 } catch (e: IllegalStateException) {
+                    Log.e(TAG,"error IllegalStateException ${e.message}")
                     videoMirrorRunning = false
                     break
                 }
@@ -303,7 +311,7 @@ class MirrorContent(
             height = h
         }
         surfaceView.requestLayout()
-        suspendCoroutine<Unit> { continuation ->
+        suspendCoroutine { continuation ->
             val layoutListener = object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     if (surfaceView.width == w && surfaceView.height == h) {
@@ -331,11 +339,29 @@ class MirrorContent(
         mediaCodec?.release()
     }
 
-    private fun stopMirror() {
-        if (mediaCodec != null) {
-            writerThread?.interrupt()
-            decoderThread?.interrupt()
-            mediaCodec?.stop()
+    private fun pauseMirror() {
+        mediaCodec?.setOutputSurface(emptySurface)
+    }
+
+    private fun restartMirror() {
+        currentSurface?.let { mediaCodec?.setOutputSurface(it) }
+    }
+
+    fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (controlChannel != null && event != null) {
+            activity.lifecycleScope.launch {
+                controlChannel!!.sendKeyEvent(event.action, keyCode, event.repeatCount, event.metaState)
+                // why no ACTION_UP?
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                    controlChannel!!.sendKeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK, 0, 0)
+                }
+            }
+            return true
         }
+        return false
+    }
+
+    fun isAppVirtualMirror(): Boolean {
+        return packageName?.isNotEmpty() == true
     }
 }

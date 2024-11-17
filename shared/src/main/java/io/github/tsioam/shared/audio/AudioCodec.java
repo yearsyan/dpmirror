@@ -48,4 +48,13 @@ public enum AudioCodec implements Codec {
         }
         return null;
     }
+
+    public static AudioCodec findById(int id) {
+        for (AudioCodec codec : values()) {
+            if (codec.id == id) {
+                return codec;
+            }
+        }
+        return null;
+    }
 }

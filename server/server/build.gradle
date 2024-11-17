@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+def moduleVersion = "0.1.6"
+def moduleVersionCode = 160
+
 android {
     namespace 'io.github.tsioam.mirror'
     compileSdk 35
@@ -7,8 +10,8 @@ android {
         applicationId "io.github.tsioam.mirror.server"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 20700
-        versionName "2.7"
+        versionCode moduleVersionCode
+        versionName moduleVersion
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -28,4 +31,72 @@ dependencies {
     testImplementation project(':shared')
     implementation libs.nanohttpd
     implementation project(':shared')
+}
+
+android.applicationVariants.configureEach { variant ->
+    def buildType = variant.buildType.name
+    def taskName = "createMagiskModule${buildType.capitalize()}"
+
+    task(taskName) {
+        group = "build"
+        description = "Creates a Magisk module with the server-${buildType}.apk renamed to mirrord"
+
+        // Use the new layout API
+        def outputDir = layout.buildDirectory.dir("magisk-module").get().asFile
+        def apkFile = layout.buildDirectory.file("outputs/apk/${buildType}/server-${buildType}.apk").get().asFile
+        def templateMetaInfDir = file("${project.rootDir}/template/META-INF")
+
+        doLast {
+
+            if (outputDir.exists()) {
+                outputDir.deleteDir()
+            }
+
+            // Copy and rename the APK to the module directory
+            copy {
+                from apkFile
+                into outputDir
+                rename { "mirrord" }
+            }
+
+            // Copy the META-INF directory from the template
+            copy {
+                from templateMetaInfDir
+                into new File(outputDir, "META-INF")
+            }
+
+            // Create the module.prop file
+            def moduleProp = new File(outputDir, "module.prop")
+            moduleProp.text = """
+                id=io.github.tsioam.mirror.server
+                name=Mirror Server Magisk Module
+                version=${moduleVersion}
+                versionCode=${moduleVersionCode}
+                author=Your Name
+                description=Runs mirrord on boot using Magisk
+            """.stripIndent()
+
+            // Create the service.sh script
+            def serviceSh = new File(outputDir, "service.sh")
+            serviceSh.text = """
+                #!/system/bin/sh
+                MODDIR=\${0%/*}
+                APK_PATH="\$MODDIR/mirrord"
+                CLASSPATH=\$APK_PATH app_process / io.github.tsioam.mirror.server.Server > "\$MODDIR/mirrord.log" 2>&1 &
+            """.stripIndent()
+            serviceSh.setExecutable(true)
+
+            def postFsDataSh = new File(outputDir, "post-fs-data.sh")
+            postFsDataSh.text = "#!/system/bin/sh\n"
+            postFsDataSh.setExecutable(true)
+
+            // Package the module into a zip file
+            ant.zip(destfile: "${layout.buildDirectory.get().asFile}/MagiskModule-v${moduleVersion}.zip", basedir: outputDir)
+
+            println "Magisk module created at: ${layout.buildDirectory.get().asFile}/MagiskModule-v${moduleVersion}.zip"
+        }
+    }
+
+    // Hook the task to run after the corresponding build
+    variant.assembleProvider.get().finalizedBy(tasks[taskName])
 }

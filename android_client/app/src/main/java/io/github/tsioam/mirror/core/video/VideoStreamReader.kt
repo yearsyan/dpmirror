@@ -1,33 +1,26 @@
-package io.github.tsioam.mirror.video
+package io.github.tsioam.mirror.core.video
 
+import android.util.Log
+import io.github.tsioam.mirror.util.clearConfigAndKeyFrameFlags
+import io.github.tsioam.mirror.util.isConfigSet
+import io.github.tsioam.mirror.util.isKeyFrameSet
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
 
-private const val TAG = "VideoStreamer"
-private const val PACKET_FLAG_CONFIG: Long = 1L shl 63
-private const val PACKET_FLAG_KEY_FRAME: Long = 1L shl 62
-private fun isConfigSet(value: Long): Boolean {
-    return (value and PACKET_FLAG_CONFIG) != 0L
-}
-
-private fun isKeyFrameSet(value: Long): Boolean {
-    return (value and PACKET_FLAG_KEY_FRAME) != 0L
-}
-private fun clearConfigAndKeyFrameFlags(value: Long): Long {
-    val mask = (PACKET_FLAG_CONFIG or PACKET_FLAG_KEY_FRAME).inv()
-    return value and mask
-}
+private val TAG = "VideoStreamReader"
 
 class VideoStreamReader(
     private val stream: InputStream,
+    private val outStream: OutputStream,
     private var onNewFrameListener: (pts: Long, isConfig: Boolean, isKeyFrame: Boolean, data: ByteArray, offset: Int, size: Int) -> Unit
 ) {
     private lateinit var thread: Thread
     private val headerBuffer: ByteArray = ByteArray(12)
     private var frameBuffer: ByteArray = ByteArray(4096)
 
-    public fun start(): Thread {
+    fun start(): Thread {
         thread = Thread({
             val headerByteBuffer = ByteBuffer.wrap(headerBuffer)
             while (!thread.isInterrupted) {
@@ -52,6 +45,7 @@ class VideoStreamReader(
                     try {
                         frameRead += stream.read(frameBuffer, frameRead, frameSize - frameRead)
                     } catch (e: IOException) {
+                        Log.e(TAG, "error read body ${e.message}")
                         return@Thread
                     }
                 }
@@ -61,5 +55,4 @@ class VideoStreamReader(
         thread.start()
         return thread
     }
-
 }

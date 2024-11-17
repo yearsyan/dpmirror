@@ -20,6 +20,9 @@ public final class ControlMessage {
     public static final int TYPE_OPEN_HARD_KEYBOARD_SETTINGS = 15;
     public static final int TYPE_START_APP = 16;
 
+    public static final int TYPE_SCREEN_ON = 200;
+    public static final int TYPE_RECONNECT_VIDEO = 100;
+
     public static final long SEQUENCE_INVALID = 0;
 
     public static final int COPY_KEY_NONE = 0;
@@ -155,6 +158,18 @@ public final class ControlMessage {
         ControlMessage msg = new ControlMessage();
         msg.type = TYPE_START_APP;
         msg.text = name;
+        return msg;
+    }
+
+    public static ControlMessage createScreenOn() {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_SCREEN_ON;
+        return msg;
+    }
+
+    public static ControlMessage createReconnectVideo() {
+        ControlMessage msg = new ControlMessage();
+        msg.type = TYPE_RECONNECT_VIDEO;
         return msg;
     }
 

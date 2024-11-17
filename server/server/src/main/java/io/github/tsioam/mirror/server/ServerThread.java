@@ -13,6 +13,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.github.tsioam.mirror.BuildConfig;
+import io.github.tsioam.mirror.server.audio.AudioCapture;
+import io.github.tsioam.mirror.server.audio.AudioDirectCapture;
+import io.github.tsioam.mirror.server.audio.AudioEncoder;
+import io.github.tsioam.mirror.server.audio.AudioSource;
 import io.github.tsioam.mirror.server.control.ControlChannel;
 import io.github.tsioam.mirror.server.control.Controller;
 import io.github.tsioam.mirror.server.control.PositionMapper;
@@ -21,12 +25,14 @@ import io.github.tsioam.mirror.server.device.Device;
 import io.github.tsioam.mirror.server.device.DeviceApp;
 import io.github.tsioam.mirror.server.util.Ln;
 import io.github.tsioam.mirror.server.video.VirtualDisplayListener;
+import io.github.tsioam.shared.audio.AudioCodec;
 import io.github.tsioam.shared.domain.NewDisplay;
 import io.github.tsioam.mirror.server.device.Streamer;
 import io.github.tsioam.mirror.server.video.NewDisplayCapture;
 import io.github.tsioam.mirror.server.video.ScreenCapture;
 import io.github.tsioam.mirror.server.video.SurfaceCapture;
 import io.github.tsioam.mirror.server.video.SurfaceEncoder;
+import io.github.tsioam.shared.util.IO;
 import io.github.tsioam.shared.video.VideoCodec;
 
 public interface ServerThread {
@@ -51,13 +57,15 @@ public interface ServerThread {
             return pfd.getFileDescriptor();
         }
 
-        public static Session createAndConnect(String ipAddress, int port) throws IOException, ConfigurationException {
+        public static Session createAndConnect(String ipAddress, int port, int displayId) throws IOException, ConfigurationException {
             Options options = Options.parse(BuildConfig.VERSION_NAME);
             options.setVideoCodec(VideoCodec.H265);
-            Session session = new Session(options, Device.DISPLAY_ID_NONE);
+            Session session = new Session(options, displayId);
             try {
                 Controller controller = session.connectControlChannel(ipAddress, port);
+                controller.bindSession(session);
                 session.connectVideoStream(controller, null, null, ipAddress, port);
+                session.connectAudioSource(ipAddress, port);
             } catch (Exception e){
                 session.cleanup();
             }
@@ -70,6 +78,7 @@ public interface ServerThread {
             Session session = new Session(options, Device.DISPLAY_ID_NONE);
             try {
                 Controller controller = session.connectControlChannel(ipAddress, port);
+                controller.bindSession(session);
                 session.connectVideoStream(controller, display, packageName, ipAddress, port);
             } catch (Exception e){
                 session.cleanup();
@@ -101,7 +110,9 @@ public interface ServerThread {
             CleanUp cleanUp = CleanUp.configure(options.getDisplayId());
             Controller controller = new Controller(displayId, controlChannel, cleanUp, options.getClipboardAutosync(), options.getPowerOn());
             controller.start((err) -> {
-
+                try {
+                    cleanup();
+                } catch (IOException ignored) {}
             });
             processors.add(controller);
             return controller;
@@ -124,11 +135,17 @@ public interface ServerThread {
             }
             SurfaceEncoder encoder = new SurfaceEncoder(surfaceCapture, videoStreamer,  options.getVideoBitRate(), options.getMaxFps(),
                     options.getVideoCodecOptions(), options.getVideoEncoder(), options.getDownsizeOnError());
-            encoder.start((err) -> {
-                try {
-                    cleanup();
-                } catch (IOException ignored) {}
-            });
+            encoder.start((err) -> {});
+            processors.add(encoder);
+        }
+
+        private void connectAudioSource(String ipAddress, int port) throws IOException {
+            FileDescriptor fd = connectAndWriteHeader(ipAddress, port, (byte) 0);
+            Streamer streamer = new Streamer(fd, AudioCodec.AAC, true, true);
+            streamer.writeHandleShakeHeader(1);
+            AudioCapture audioCapture = new AudioDirectCapture(AudioSource.OUTPUT);
+            AudioEncoder encoder = new AudioEncoder(audioCapture, streamer, options.getAudioBitRate(), options.getAudioCodecOptions(), options.getAudioEncoder());
+            encoder.start((err) -> {});
             processors.add(encoder);
         }
 

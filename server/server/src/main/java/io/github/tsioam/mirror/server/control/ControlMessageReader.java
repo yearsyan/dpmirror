@@ -1,5 +1,6 @@
 package io.github.tsioam.mirror.server.control;
 
+import io.github.tsioam.mirror.server.util.Ln;
 import io.github.tsioam.shared.util.Binary;
 
 import java.io.BufferedInputStream;
@@ -55,6 +56,10 @@ public class ControlMessageReader {
                 return parseUhidInput();
             case ControlMessage.TYPE_UHID_DESTROY:
                 return parseUhidDestroy();
+            case ControlMessage.TYPE_SCREEN_ON:
+                return parseScreenOn();
+            case ControlMessage.TYPE_RECONNECT_VIDEO:
+                return parseReconnectVideo();
             default:
                 throw new ControlProtocolException("Unknown event type: " + type);
         }
@@ -163,5 +168,13 @@ public class ControlMessageReader {
         int screenWidth = dis.readUnsignedShort();
         int screenHeight = dis.readUnsignedShort();
         return new Position(x, y, screenWidth, screenHeight);
+    }
+
+    private ControlMessage parseScreenOn() throws IOException {
+        return ControlMessage.createScreenOn();
+    }
+
+    private ControlMessage parseReconnectVideo() throws IOException {
+        return ControlMessage.createReconnectVideo();
     }
 }

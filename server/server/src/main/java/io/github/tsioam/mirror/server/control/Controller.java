@@ -2,6 +2,7 @@ package io.github.tsioam.mirror.server.control;
 
 import io.github.tsioam.mirror.server.AsyncProcessor;
 import io.github.tsioam.mirror.server.CleanUp;
+import io.github.tsioam.mirror.server.ServerThread;
 import io.github.tsioam.mirror.server.device.Device;
 import io.github.tsioam.mirror.server.device.DeviceApp;
 import io.github.tsioam.mirror.server.util.Ln;
@@ -80,6 +81,7 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
     private final DeviceMessageSender sender;
     private final boolean clipboardAutosync;
     private final boolean powerOn;
+    private ServerThread.Session session;
 
     private final KeyCharacterMap charMap = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
 
@@ -184,6 +186,7 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
         while (!Thread.currentThread().isInterrupted() && alive) {
             alive = handleEvent();
         }
+        Ln.d("control exit :" + Thread.currentThread().isInterrupted() + " alive: " + alive);
     }
 
     @Override
@@ -228,6 +231,7 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
             msg = controlChannel.recv();
         } catch (IOException e) {
             // this is expected on close
+            Ln.d("recv event fail: " + e.getMessage());
             return false;
         }
 
@@ -303,6 +307,12 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
                 break;
             case ControlMessage.TYPE_START_APP:
                 startAppAsync(msg.getText());
+                break;
+            case ControlMessage.TYPE_SCREEN_ON:
+                screenOn();
+                break;
+            case ControlMessage.TYPE_RECONNECT_VIDEO:
+                // TODO
                 break;
             default:
                 // do nothing
@@ -675,5 +685,20 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
 
             return data;
         }
+    }
+
+    private void screenOn() {
+        if (Device.isScreenOn()) {
+            return;
+        }
+
+        if (keepPowerModeOff) {
+            schedulePowerModeOff();
+        }
+        pressReleaseKeycode(KeyEvent.KEYCODE_POWER, Device.INJECT_MODE_ASYNC);
+    }
+
+    public void bindSession(ServerThread.Session session) {
+        this.session = session;
     }
 }

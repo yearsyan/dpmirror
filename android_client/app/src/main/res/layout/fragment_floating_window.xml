@@ -1,0 +1,37 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="@drawable/click_container"
+    android:layout_width="wrap_content"
+    android:gravity="center"
+    android:padding="5dp"
+    android:orientation="vertical"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/icon_expand"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="end|bottom"
+        android:src="@drawable/more"
+        android:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/floating_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/close_connection"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="关闭"
+            android:padding="16dp"/>
+
+        <TextView
+            android:id="@+id/show_connection_quality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="16dp" />
+    </LinearLayout>
+</LinearLayout>

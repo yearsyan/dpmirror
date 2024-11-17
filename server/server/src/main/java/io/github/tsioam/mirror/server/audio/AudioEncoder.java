@@ -90,6 +90,8 @@ public final class AudioEncoder implements AsyncProcessor {
             }
         }
 
+        Ln.d("format info bit rate: " + format.getInteger(MediaFormat.KEY_BIT_RATE) + " channel: " + format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) + " sr: " + format.getInteger(MediaFormat.KEY_SAMPLE_RATE));
+
         return format;
     }
 

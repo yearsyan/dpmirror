@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.github.tsioam.shared.domain.Size;
 
@@ -20,10 +21,13 @@ public final class Streamer {
     private static final long PACKET_FLAG_CONFIG = 1L << 63;
     private static final long PACKET_FLAG_KEY_FRAME = 1L << 62;
 
-    private final FileDescriptor fd;
+    private volatile FileDescriptor fd;
     private final Codec codec;
     private final boolean sendCodecMeta;
     private final boolean sendFrameMeta;
+    private boolean isVideo = false;
+    private AtomicBoolean losing = new AtomicBoolean(false);
+    private AtomicBoolean waitingForKeyFrame = new AtomicBoolean(false);
 
     private final ByteBuffer headerBuffer = ByteBuffer.allocate(12);
 
@@ -52,11 +56,11 @@ public final class Streamer {
         buffer.putInt(type);
         buffer.putLong(0);
         buffer.flip();
-        Ln.d("write header for type" + type);
         IO.writeFully(fd, buffer);
     }
 
     public void writeVideoHeader(Size videoSize) throws IOException {
+        isVideo = true;
         if (sendCodecMeta) {
             ByteBuffer buffer = ByteBuffer.allocate(12);
             buffer.putInt(codec.getId());
@@ -198,5 +202,14 @@ public final class Streamer {
 
         // Set the buffer to point to the FLAC header slice
         buffer.limit(buffer.position() + size);
+    }
+
+    public void updateFd(FileDescriptor fd) {
+        this.fd = fd;
+        this.waitingForKeyFrame.set(true);
+    }
+
+    public void activate() {
+        this.losing.set(false);
     }
 }

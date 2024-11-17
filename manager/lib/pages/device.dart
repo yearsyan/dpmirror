@@ -68,10 +68,27 @@ class _DevicePageState extends State<DevicePage> {
         itemBuilder: (context, index) {
           final app = _apps[index];
           return GestureDetector(
-            child: ListTile(
-              title: Text(app.name),
-              subtitle: Text('Package: ${app.packageName}'),
-              trailing: Icon(app.system ? Icons.check : Icons.close),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  // Image.network(
+                  //   "http://icon.smartisan.com/drawable/${app.packageName}/icon_provided_by_smartisan.png",
+                  //   fit: BoxFit.cover,
+                  //   height: 120,
+                  //   width: 120,
+                  // ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(app.name),
+                        Text('Package: ${app.packageName}')
+                      ],
+                    ),
+                  )
+                ],
+              ),
             ),
             onTap: () async {
               MethodChannelSingleton().startAppMirror(_deviceInfo.host, _deviceInfo.port, app.packageName);

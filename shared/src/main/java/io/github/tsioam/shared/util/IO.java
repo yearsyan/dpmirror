@@ -32,6 +32,21 @@ public final class IO {
         }
     }
 
+    public static byte[] readData(FileDescriptor fd, int size) throws IOException {
+        byte[] res = new byte[size];
+        int read = 0;
+        try {
+            while (read < size) {
+                read += Os.read(fd, res, read, size - read);
+            }
+        } catch (ErrnoException e) {
+            if (e.errno != OsConstants.EINTR) {
+                throw new IOException(e);
+            }
+        }
+        return res;
+    }
+
     public static void writeFully(FileDescriptor fd, byte[] buffer, int offset, int len) throws IOException {
         writeFully(fd, ByteBuffer.wrap(buffer, offset, len));
     }

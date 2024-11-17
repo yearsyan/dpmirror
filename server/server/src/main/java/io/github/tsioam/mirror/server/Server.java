@@ -25,8 +25,11 @@ import io.github.tsioam.mirror.server.video.SurfaceCapture;
 import io.github.tsioam.mirror.server.video.SurfaceEncoder;
 import io.github.tsioam.mirror.server.video.VideoSource;
 
+import android.content.Context;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.system.ErrnoException;
+import android.system.Os;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,35 +44,6 @@ public final class Server {
         String[] classPaths = System.getProperty("java.class.path").split(File.pathSeparator);
         // By convention, scrcpy is always executed with the absolute path of scrcpy-server.jar as the first item in the classpath
         SERVER_PATH = classPaths[0];
-    }
-
-    public static class Completion {
-        private int running;
-        private boolean fatalError;
-
-        Completion(int running) {
-            this.running = running;
-        }
-
-        synchronized void addCompleted(boolean fatalError) {
-            --running;
-            if (fatalError) {
-                this.fatalError = true;
-            }
-            if (running == 0 || this.fatalError) {
-                notify();
-            }
-        }
-
-        synchronized void await() {
-            try {
-                while (running > 0 && !fatalError) {
-                    wait();
-                }
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        }
     }
 
     private Server() {
@@ -128,68 +102,49 @@ public final class Server {
     }
 
     public static void main(String... args) {
+        preInit();
         looperServerMain();
-//        int status = 0;
-//        try {
-//            internalMain(args);
-//        } catch (Throwable t) {
-//            Ln.e(t.getMessage(), t);
-//            status = 1;
-//        } finally {
-//            // By default, the Java process exits when all non-daemon threads are terminated.
-//            // The Android SDK might start some non-daemon threads internally, preventing the scrcpy server to exit.
-//            // So force the process to exit explicitly.
-//            System.exit(status);
-//        }
     }
 
-    private static void internalMain(String... args) throws Exception {
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-            Ln.e("Exception on thread " + t, e);
-        });
-
-        Options options = Options.parse(args);
-
-        Ln.disableSystemStreams();
-        Ln.initLogLevel(options.getLogLevel());
-
-        Ln.i("Device: [" + Build.MANUFACTURER + "] " + Build.BRAND + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ")");
-
-        if (options.getList()) {
-            if (options.getCleanup()) {
-                CleanUp.unlinkSelf();
+    private static void waitSystemServerStart() {
+        int tryTimes = 0;
+        boolean success = false;
+        while (tryTimes < 10) {
+            try {
+                Object service = FakeContext.get().getSystemService(Context.NSD_SERVICE);
+                if (service != null) {
+                    success = true;
+                    Ln.i("Service manger start after try: " + tryTimes);
+                    break;
+                }
+                tryTimes++;
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                break;
             }
-
-            if (options.getListEncoders()) {
-                Ln.i(LogUtils.buildVideoEncoderListMessage());
-                Ln.i(LogUtils.buildAudioEncoderListMessage());
-            }
-            if (options.getListDisplays()) {
-                Ln.i(LogUtils.buildDisplayListMessage());
-            }
-            if (options.getListCameras() || options.getListCameraSizes()) {
-                Workarounds.apply();
-                Ln.i(LogUtils.buildCameraListMessage(options.getListCameraSizes()));
-            }
-            // Just print the requested data, do not mirror
-            return;
         }
-
-//        try {
-//            scrcpy(options);
-//        } catch (ConfigurationException e) {
-//            // Do not print stack trace, a user-friendly error-message has already been logged
-//        }
+        if (!success) {
+            Ln.e("fail to wait system server start");
+        }
     }
 
+    private static void preInit() {
+        if (Os.getuid() == 0) {
+            try {
+                Os.seteuid(2000);
+            } catch (ErrnoException ignored) {}
+        }
+    }
 
     private static void looperServerMain() {
         Ln.disableSystemStreams();
         Ln.initLogLevel(Ln.Level.VERBOSE);
-        Ln.i("starting");
+        Ln.i("Starting");
+        Ln.i("Device: [" + Build.MANUFACTURER + "] " + Build.BRAND + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ")");
 
         Workarounds.apply();
         try {
+            waitSystemServerStart();
             LoopServer s = new LoopServer(Constants.NSD_SERVICE_PORT);
             NsdService nsdService = new NsdService();
             nsdService.registerService();
@@ -197,7 +152,6 @@ public final class Server {
         } catch (Exception e) {
             Ln.i("error " + e);
         }
-        Ln.i("end");
 
     }
 }

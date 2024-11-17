@@ -3,16 +3,19 @@ package io.github.tsioam.mirror
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.NonNull
-import androidx.compose.ui.geometry.Size
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import io.flutter.embedding.android.FlutterFragment
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
+import io.github.tsioam.mirror.core.INTENT_KEY_ADDRESS
+import io.github.tsioam.mirror.core.INTENT_KEY_DISPLAY
+import io.github.tsioam.mirror.core.INTENT_KEY_PACKAGE_NAME
+import io.github.tsioam.mirror.core.INTENT_KEY_PORT
+import io.github.tsioam.mirror.core.SurfaceActivity
 import io.github.tsioam.mirror.util.Rpc
 import io.github.tsioam.shared.domain.NewDisplay
 import kotlinx.coroutines.Dispatchers
@@ -126,6 +129,7 @@ class MainActivity : FragmentActivity() {
         flutterFragment!!.onNewIntent(intent)
     }
 
+    @Deprecated("Deprecated in Java")
     @SuppressLint("MissingSuperCall")
     override fun onBackPressed() {
         flutterFragment!!.onBackPressed()
