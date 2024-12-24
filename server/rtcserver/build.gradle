@@ -1,0 +1,64 @@
+apply plugin: 'com.android.application'
+
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+android {
+    namespace 'io.github.tsioam.rtcserver'
+    compileSdk 35
+    defaultConfig {
+        applicationId "io.github.tsioam.rtcserver"
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    buildFeatures {
+        buildConfig true
+        aidl true
+    }
+
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach { output ->
+            def soOutputDir = layout.buildDirectory.dir("extracted-libs/${variant.name}").get().asFile
+
+            // 挂钩 mergeNativeLibs 任务
+            def mergeNativeLibsTask = tasks.findByName("merge${variant.name.capitalize()}NativeLibs")
+            if (mergeNativeLibsTask) {
+                mergeNativeLibsTask.doLast {
+                    def intermediateDir = mergeNativeLibsTask.outputDir.get().asFile
+                    if (intermediateDir.exists()) {
+                        soOutputDir.mkdirs()
+                        intermediateDir.eachFileRecurse { file ->
+                            if (file.name.endsWith(".so")) {
+                                def relativePath = file.absolutePath - intermediateDir.absolutePath
+                                def targetFile = new File(soOutputDir, relativePath)
+                                targetFile.parentFile.mkdirs()
+                                Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                            }
+                        }
+                        intermediateDir.deleteDir()
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+dependencies {
+    testImplementation libs.junit
+    implementation libs.stream.webrtc.android
+    androidTestImplementation libs.runner
+    androidTestImplementation libs.espresso.core
+    implementation project(':core')
+    implementation project(':shared')
+    implementation libs.nv.websocket.client
+}

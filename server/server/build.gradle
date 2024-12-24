@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 
 def moduleVersion = "0.1.6"
 def moduleVersionCode = 160
+def author = "yearsyan"
 
 android {
     namespace 'io.github.tsioam.mirror'
@@ -22,7 +23,6 @@ android {
     }
     buildFeatures {
         buildConfig true
-        aidl true
     }
 }
 
@@ -31,6 +31,7 @@ dependencies {
     testImplementation project(':shared')
     implementation libs.nanohttpd
     implementation project(':shared')
+    implementation project(':core')
 }
 
 android.applicationVariants.configureEach { variant ->
@@ -68,21 +69,21 @@ android.applicationVariants.configureEach { variant ->
             // Create the module.prop file
             def moduleProp = new File(outputDir, "module.prop")
             moduleProp.text = """
-                id=io.github.tsioam.mirror.server
-                name=Mirror Server Magisk Module
-                version=${moduleVersion}
-                versionCode=${moduleVersionCode}
-                author=Your Name
-                description=Runs mirrord on boot using Magisk
-            """.stripIndent()
+id=io.github.tsioam.mirror.server
+name=Mirror Server Magisk Module
+version=${moduleVersion}
+versionCode=${moduleVersionCode}
+author=${author}
+description=Runs mirrord on boot using Magisk
+""".stripIndent()
 
             // Create the service.sh script
             def serviceSh = new File(outputDir, "service.sh")
             serviceSh.text = """
-                #!/system/bin/sh
-                MODDIR=\${0%/*}
-                APK_PATH="\$MODDIR/mirrord"
-                CLASSPATH=\$APK_PATH app_process / io.github.tsioam.mirror.server.Server > "\$MODDIR/mirrord.log" 2>&1 &
+#!/system/bin/sh
+MODDIR=\${0%/*}
+APK_PATH="\$MODDIR/mirrord"
+CLASSPATH=\$APK_PATH app_process / io.github.tsioam.mirror.server.Server > "\$MODDIR/mirrord.log" 2>&1 &
             """.stripIndent()
             serviceSh.setExecutable(true)
 

@@ -1,0 +1,13 @@
+{
+  "allow_device_uuid": [
+    "454ce4bc-9c0a-4965-9828-7b26736dba53"
+  ],
+  "turn": {
+    "port": 9802,
+    "key": "testkey"
+  },
+  "websocket": {
+    "port": 9801,
+    "path": "/rtc-ws"
+  }
+}

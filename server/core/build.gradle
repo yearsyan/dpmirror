@@ -1,0 +1,50 @@
+plugins {
+    alias(libs.plugins.android.library)
+}
+
+def moduleVersion = "0.1.6"
+def moduleVersionCode = 160
+
+android {
+    namespace 'io.github.tsioam.mirror.core'
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 21
+
+        versionCode moduleVersionCode
+        versionName moduleVersion
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        aidl true
+    }
+
+    sourceSets {
+        main {
+            aidl.srcDirs = ['src/main/aidl']
+        }
+    }
+
+}
+
+dependencies {
+
+    testImplementation libs.junit
+    testImplementation project(':shared')
+    implementation project(':shared')
+    compileOnly project(':hidden')
+}

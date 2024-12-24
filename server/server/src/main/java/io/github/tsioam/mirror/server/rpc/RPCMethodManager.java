@@ -5,12 +5,11 @@ import android.text.TextUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.util.concurrent.ConcurrentHashMap;
 
 import fi.iki.elonen.NanoHTTPD;
 import io.github.tsioam.mirror.server.ServerThread;
-import io.github.tsioam.mirror.server.device.ConfigurationException;
+import io.github.tsioam.mirror.core.device.ConfigurationException;
 
 public class RPCMethodManager {
     private static volatile RPCMethodManager instance;

@@ -5,7 +5,8 @@ import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 
-import io.github.tsioam.mirror.server.util.Ln;
+import io.github.tsioam.mirror.core.FakeContext;
+import io.github.tsioam.mirror.core.util.Ln;
 import io.github.tsioam.shared.Constants;
 
 public class NsdService {

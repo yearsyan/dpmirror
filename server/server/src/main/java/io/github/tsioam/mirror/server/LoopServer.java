@@ -1,40 +1,23 @@
 package io.github.tsioam.mirror.server;
 import android.net.Uri;
 import android.os.Looper;
-import android.os.ParcelFileDescriptor;
-import android.se.omapi.Session;
 import android.text.TextUtils;
 
 import org.json.JSONObject;
 
-import io.github.tsioam.mirror.BuildConfig;
-import io.github.tsioam.mirror.server.control.ControlChannel;
-import io.github.tsioam.mirror.server.control.Controller;
-import io.github.tsioam.mirror.server.device.ConfigurationException;
-import io.github.tsioam.mirror.server.device.Device;
-import io.github.tsioam.mirror.server.device.Streamer;
+import io.github.tsioam.mirror.core.DeviceSession;
 import io.github.tsioam.mirror.server.rpc.RPCMethodManager;
-import io.github.tsioam.mirror.server.util.Ln;
-import io.github.tsioam.mirror.server.video.ScreenCapture;
-import io.github.tsioam.mirror.server.video.SurfaceCapture;
-import io.github.tsioam.mirror.server.video.SurfaceEncoder;
-import io.github.tsioam.shared.video.VideoCodec;
+import io.github.tsioam.mirror.core.util.Ln;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import fi.iki.elonen.NanoHTTPD;
 
 public class LoopServer extends NanoHTTPD implements ServerThread {
 
-    private ConcurrentHashMap<ServerThread.Session,Boolean> sessionSet = new ConcurrentHashMap();
+    private ConcurrentHashMap<DeviceSession,Boolean> sessionSet = new ConcurrentHashMap();
 
     public LoopServer(int port) {
         super(port);
@@ -85,7 +68,7 @@ public class LoopServer extends NanoHTTPD implements ServerThread {
 
 
     @Override
-    public ConcurrentHashMap<Session, Boolean> getSessionSet() {
+    public ConcurrentHashMap<DeviceSession, Boolean> getSessionSet() {
         return sessionSet;
     }
 }

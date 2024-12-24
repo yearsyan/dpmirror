@@ -19,7 +19,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import io.github.tsioam.mirror.R
-import io.github.tsioam.mirror.core.video.VideoStreamReader
 import io.github.tsioam.mirror.ui.FloatView
 import io.github.tsioam.mirror.ui.FloatingWindowFragment
 import io.github.tsioam.mirror.util.Rpc

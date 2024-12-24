@@ -1,2 +1,4 @@
 push.bat
+push-rtc.bat
+push-rtc-to-device.bat
 .idea/

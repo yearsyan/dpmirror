@@ -1,29 +1,13 @@
 package io.github.tsioam.mirror.server;
 
-import io.github.tsioam.mirror.server.audio.AudioCapture;
+import io.github.tsioam.mirror.core.CleanUp;
+import io.github.tsioam.mirror.core.FakeContext;
+import io.github.tsioam.mirror.core.Options;
+import io.github.tsioam.mirror.core.Workarounds;
 import io.github.tsioam.shared.Constants;
-import io.github.tsioam.shared.audio.AudioCodec;
-import io.github.tsioam.mirror.server.audio.AudioDirectCapture;
-import io.github.tsioam.mirror.server.audio.AudioEncoder;
-import io.github.tsioam.mirror.server.audio.AudioPlaybackCapture;
-import io.github.tsioam.mirror.server.audio.AudioRawRecorder;
-import io.github.tsioam.mirror.server.audio.AudioSource;
-import io.github.tsioam.mirror.server.control.ControlChannel;
-import io.github.tsioam.mirror.server.control.Controller;
-import io.github.tsioam.mirror.server.control.DeviceMessage;
-import io.github.tsioam.mirror.server.device.ConfigurationException;
-import io.github.tsioam.mirror.server.device.DesktopConnection;
-import io.github.tsioam.mirror.server.device.Device;
-import io.github.tsioam.mirror.server.device.Streamer;
-import io.github.tsioam.mirror.server.util.Ln;
-import io.github.tsioam.mirror.server.util.LogUtils;
-import io.github.tsioam.mirror.server.util.Settings;
-import io.github.tsioam.mirror.server.util.SettingsException;
-import io.github.tsioam.mirror.server.video.CameraCapture;
-import io.github.tsioam.mirror.server.video.ScreenCapture;
-import io.github.tsioam.mirror.server.video.SurfaceCapture;
-import io.github.tsioam.mirror.server.video.SurfaceEncoder;
-import io.github.tsioam.mirror.server.video.VideoSource;
+import io.github.tsioam.mirror.core.util.Ln;
+import io.github.tsioam.mirror.core.util.Settings;
+import io.github.tsioam.mirror.core.util.SettingsException;
 
 import android.content.Context;
 import android.os.BatteryManager;
@@ -32,9 +16,6 @@ import android.system.ErrnoException;
 import android.system.Os;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class Server {
 
