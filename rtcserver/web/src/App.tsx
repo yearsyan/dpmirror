@@ -6,7 +6,9 @@ const deviceId = '454ce4bc-9c0a-4965-9828-7b26736dba53'
 
 const iceServers: RTCIceServer[] = [
   {
-    urls: `turn:${import.meta.env.VITE_REMOTE_HOST}:9802`
+    urls: `turn:${import.meta.env.VITE_REMOTE_HOST}:9802`,
+    username: '0',
+    credential: 'testkey'
   }
 ]
 
@@ -116,9 +118,6 @@ function Client() {
 
         dataChannel.onopen = () => console.log("DataChannel is open");
         dataChannel.onmessage = (event) => console.log("Received:", event.data);
-        setInterval(() => {
-          dataChannel.send(`new data ${Date.now()}`)
-        }, 1500)
       })
 
       peerConnection.addEventListener('icecandidate', event => {

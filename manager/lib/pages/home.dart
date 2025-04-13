@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
+import 'dart:io';
 
 import '../core/mirror_method_channel.dart';
 
@@ -82,6 +83,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
         appBar: AppBar(
           title: Text("Devices List"),
+          actions: Platform.isAndroid ? [IconButton(
+            icon: const Icon(Icons.play_arrow),
+            onPressed: () {
+              Navigator.pushNamed(context, "/run-daemon");
+            },
+          )] : [],
         ),
         body: Column(
           children: [

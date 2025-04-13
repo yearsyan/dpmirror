@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/services.dart';
 
 class DeviceInfo {
@@ -43,5 +45,22 @@ class MethodChannelSingleton {
     };
     final res = await _channel.invokeMethod("rpcCall", args);
     return res as String;
+  }
+  
+  Future<bool> checkAndReqShuzukuPermission()async {
+    final  Map<String,dynamic> args = <String,dynamic>{
+      'method': 'shuzuku'
+    };
+    final res = await _channel.invokeMethod("checkAndReqShellPermission", args);
+    return res as bool;
+  }
+
+  Future<void> runDaemonServer(String ws, String turn)async {
+    final  Map<String,dynamic> args = <String,dynamic>{
+      'method': 'shuzuku',
+      'ws_url': ws,
+      'turn': turn
+    };
+    await _channel.invokeMethod("startDaemonServer", args);
   }
 }

@@ -7,6 +7,8 @@ import org.webrtc.PeerConnection;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.github.tsioam.mirror.core.util.Ln;
+
 public class RtcServerConfig {
 
     private static RtcServerConfig sConfig;
@@ -20,7 +22,7 @@ public class RtcServerConfig {
 
     private RtcServerConfig() {
         mWsUrl = System.getenv("WS_SERVER_URL");
-        if (!TextUtils.isEmpty(System.getenv("ICE_SERVER"))) {
+        if (!TextUtils.isEmpty(System.getenv("TURN_SERVER"))) {
             PeerConnection.IceServer.Builder builder = PeerConnection.IceServer.builder(System.getenv("TURN_SERVER"));
             if (!TextUtils.isEmpty(System.getenv("ICE_USER"))) {
                 builder.setUsername(System.getenv("ICE_USER"));

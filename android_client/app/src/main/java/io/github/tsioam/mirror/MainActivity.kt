@@ -2,6 +2,7 @@ package io.github.tsioam.mirror
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.NonNull
@@ -21,14 +22,23 @@ import io.github.tsioam.shared.domain.NewDisplay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import rikka.shizuku.Shizuku
+import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
 import java.net.InetAddress
 
 
 private const val TAG_FLUTTER_FRAGMENT = "flutter_fragment"
 private const val FLUTTER_CHANNEL_NAME = "io.github.tsioam.mirror"
-class MainActivity : FragmentActivity() {
+private const val SHUZUKU_REQ_CODE = 9976
+class  MainActivity : FragmentActivity() {
 
     private var flutterFragment: FlutterFragment? = null
+    private var shuzukuReqResult: MethodChannel.Result? = null
+    private var shuzukuPermissionListener: OnRequestPermissionResultListener = object : OnRequestPermissionResultListener {
+        override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+            this@MainActivity.onRequestPermissionsResult(requestCode, grantResult)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +58,13 @@ class MainActivity : FragmentActivity() {
                 )
                 .commit()
         }
+        Shizuku.addRequestPermissionResultListener(shuzukuPermissionListener)
         configMethodChannel()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Shizuku.removeRequestPermissionResultListener(shuzukuPermissionListener)
     }
 
     private fun configMethodChannel() {
@@ -70,6 +86,27 @@ class MainActivity : FragmentActivity() {
                 "rpcCall" -> {
                     val arguments: Map<String, Any> = call.arguments() ?: return@setMethodCallHandler
                     handleRpcCall(arguments, result)
+                }
+                "checkAndReqShellPermission" -> {
+                    val arguments: Map<String, Any> = call.arguments() ?: return@setMethodCallHandler
+                    if (arguments.get("method") == "shuzuku") {
+                        checkAndReqShizukuPermission(result)
+                    }
+                }
+                "checkShellPermission" -> {}
+                "startDaemonServer" -> {
+                    val arguments: Map<String, Any> = call.arguments() ?: return@setMethodCallHandler
+                    if (arguments["ws_url"] !is String || arguments["turn"] !is String) {
+                        result.error("-1", "params empty", "ws: ${arguments["ws_url"]} turn:${arguments["turn"]}")
+                        return@setMethodCallHandler
+                    }
+                    val ws = arguments["ws_url"] as String
+                    val turn = arguments["turn"] as String
+                    (application as MirrorApplication).runRtcServer(ws, turn)
+                    result.success(null)
+                }
+                "isDaemonServerRunning" -> {
+                    result.success((application as MirrorApplication).isRtcServerRunning())
                 }
             }
         }
@@ -135,6 +172,16 @@ class MainActivity : FragmentActivity() {
         flutterFragment!!.onBackPressed()
     }
 
+    fun onRequestPermissionsResult(requestCode: Int, grantResults:Int) {
+        if (grantResults == PackageManager.PERMISSION_GRANTED && requestCode == SHUZUKU_REQ_CODE) {
+            shuzukuReqResult?.success(true)
+            shuzukuReqResult = null
+        } else if (grantResults == PackageManager.PERMISSION_DENIED && requestCode == SHUZUKU_REQ_CODE) {
+            shuzukuReqResult?.success(false)
+            shuzukuReqResult = null
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String?>,
@@ -179,6 +226,23 @@ class MainActivity : FragmentActivity() {
             intent.putExtra(INTENT_KEY_DISPLAY, display)
         }
         startActivity(intent)
+    }
+
+    private fun checkAndReqShizukuPermission(result: MethodChannel.Result) {
+        if (Shizuku.isPreV11()) {
+            result.error("1", "is pre 11", null)
+            return
+        }
+
+        if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            result.success(true)
+            return
+        } else if (Shizuku.shouldShowRequestPermissionRationale()) {
+            result.success(false)
+        } else {
+            shuzukuReqResult = result
+            Shizuku.requestPermission(SHUZUKU_REQ_CODE);
+        }
     }
 }
 

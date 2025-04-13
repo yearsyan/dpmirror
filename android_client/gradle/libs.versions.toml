@@ -1,5 +1,6 @@
 [versions]
 agp = "8.7.0"
+shizuku = "13.1.5"
 kotlin = "2.0.0"
 coreKtx = "1.13.1"
 junit = "4.13.2"
@@ -16,9 +17,11 @@ appcompat = "1.6.1"
 material = "1.10.0"
 appcompatVersion = "1.7.0"
 materialVersion = "1.12.0"
+streamWebrtcAndroid = "1.3.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+shizuku = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -40,6 +43,8 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompatVersion" }
 google-material = { group = "com.google.android.material", name = "material", version.ref = "materialVersion" }
+shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+stream-webrtc-android = { module = "io.getstream:stream-webrtc-android", version.ref = "streamWebrtcAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

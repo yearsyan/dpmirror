@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'io.github.tsioam.mirror'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "io.github.tsioam.mirror"
         minSdk 26
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
@@ -27,12 +27,52 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    buildFeatures {
+        aidl = true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    applicationVariants.configureEach { variant ->
+        def variantName = variant.name
+        def taskName = "buildAndCopyRtcServerApk_${variantName}"
+
+        tasks.register(taskName) {
+            doLast {
+                exec {
+                    workingDir "../../server"
+                    commandLine "./gradlew", "rtcserver:assembleRelease"
+                }
+
+                def sourceApk = file("../../server/rtcserver/build/outputs/apk/release/rtcserver-release-unsigned.apk")
+                def targetDir = layout.buildDirectory.dir("intermediates/assets/${variantName}").get().asFile
+                def targetFile = new File(targetDir, "rtcserver")
+
+                if (!sourceApk.exists()) {
+                    throw new GradleException("rtcserver-release.apk not found!")
+                }
+
+                targetDir.mkdirs()
+                sourceApk.withInputStream { input ->
+                    targetFile.withOutputStream { out ->
+                        out << input
+                    }
+                }
+
+                println "✅ Copied rtcserver APK to assets/${variantName}/rtcserver"
+            }
+        }
+
+        variant.mergeAssetsProvider.configure {
+            dependsOn(taskName)
+        }
     }
 }
 
@@ -47,6 +87,9 @@ dependencies {
     implementation project(':flutter')
     implementation libs.appcompat
     implementation libs.google.material
+    implementation libs.shizuku
+    implementation libs.shizuku.provider
+    implementation libs.stream.webrtc.android
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core

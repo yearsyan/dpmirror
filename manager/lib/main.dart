@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:manager/core/mmkv_singleton.dart';
+import 'package:manager/pages/android/run_daemon_android.dart';
 import 'package:manager/pages/device.dart';
 import 'package:manager/pages/home.dart';
 
-void main() => runApp(const MyApp());
+void main() async {
+  await MMKVSingleton().insureInit();
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -16,6 +21,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const HomePage(),
         '/device': (context) => const DevicePage(),
+        '/run-daemon': (context) => const RunDaemonPage()
       },
     );
   }
